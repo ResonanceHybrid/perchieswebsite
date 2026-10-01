@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Perchies: Pets on Your Screen</title>
+  <meta name="description" content="Perchies are tiny animated pets that walk, climb and nap on your phone screen, right over your apps. 190 cute characters, treats to feed them and friendly reminders.">
+  <meta name="theme-color" content="#f4ecff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#150e28" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Perchies: Pets on Your Screen">
+  <meta property="og:description" content="Tiny animated pets that walk, climb and nap right on top of your apps.">
+  <meta property="og:image" content="assets/icon-1024.png">
+  <meta name="twitter:card" content="summary">
+  <link rel="preload" href="assets/fonts/Fredoka.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "MobileApplication",
+    "name": "Perchies",
+    "operatingSystem": "Android",
+    "applicationCategory": "EntertainmentApplication",
+    "description": "Tiny animated pets that walk, climb and nap on your phone screen, right over your apps.",
+    "installUrl": "https://play.google.com/store/apps/details?id=com.perchies.pets",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <div class="wrap">
+      <div class="nav-bar glass">
+        <a class="logo" href="./" aria-label="Perchies home">
+          <img src="assets/icon-192.png" alt="" width="34" height="34">
+          Perchies
+        </a>
+        <nav class="nav-links" aria-label="Main">
+          <a href="#characters">Characters</a>
+          <a href="#how">How it works</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a class="btn btn-primary btn-small play-link" href="https://play.google.com/store/apps/details?id=com.perchies.pets">Get the app</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <h1 class="reveal" data-perch>Tiny pets that <span class="brand-word">live</span> on your screen.</h1>
+          <p class="hero-sub reveal" style="--i:1">Pick a squad of little animals and let them out. They walk, climb and nap right on top of your apps.</p>
+          <div class="hero-cta reveal" style="--i:2">
+            <a class="play-badge play-link" href="https://play.google.com/store/apps/details?id=com.perchies.pets" data-perch>
+              <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" width="223" height="86">
+            </a>
+            <a class="btn btn-ghost" href="#characters">Meet the pets</a>
+          </div>
+        </div>
+
+        <div class="phone reveal" style="--i:2" aria-label="Perchies running on a phone, with three pets walking around the home screen" role="img">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <div class="phone-ui" aria-hidden="true">
+              <div class="phone-title">Perchies</div>
+              <div class="phone-card" data-stage>
+                Your squad
+                <span>Fed and happy. Ready to roam.</span>
+                <div class="phone-roam">Let them roam</div>
+              </div>
+            </div>
+            <div class="phone-nav" aria-hidden="true">
+              <span>Home</span><span>Characters</span><span>Modes</span>
+            </div>
+            <div class="stage-layer" id="phone-stage" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="characters">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="eyebrow">190 characters</span>
+          <h2 data-perch>Thirteen families. One squad.</h2>
+          <p>Bunnies, cats, pandas, ducklings and more, each with its own personality. Here are a few of them.</p>
+        </div>
+
+        <div class="families reveal" id="families" role="group" aria-label="Families"></div>
+
+        <div class="cast reveal" id="cast">
+          <article class="cast-main glass" data-perch>
+            <div class="puppet" id="cast-puppet"></div>
+            <div>
+              <h3 id="cast-name">Mochi</h3>
+              <p class="cast-meta" id="cast-meta">Bunny, Hopper</p>
+              <div class="chip-row" id="cast-moves" role="group" aria-label="Moves"></div>
+              <button class="btn btn-primary" id="cast-out" type="button"><i class="ph-bold ph-paw-print" aria-hidden="true"></i>Let them out</button>
+            </div>
+          </article>
+          <button class="cast-side glass" type="button" id="cast-a" data-perch></button>
+          <button class="cast-side glass" type="button" id="cast-b" data-perch></button>
+        </div>
+        <p class="cast-more" id="cast-more">Twelve more in this family inside the app.</p>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <h2 data-perch>They don't stay in the app.</h2>
+        </div>
+
+        <div class="bento">
+          <article class="tile tile-float reveal">
+            <h3>Over every app you use</h3>
+            <p>Turn on float mode and your squad walks the edges of your screen while you scroll, chat and play.</p>
+            <div class="float-screen" aria-hidden="true">
+              <div class="float-app">
+                <span><i class="ph-bold ph-chat-circle-dots"></i></span>
+                <span><i class="ph-bold ph-music-notes"></i></span>
+                <span><i class="ph-bold ph-camera"></i></span>
+                <span><i class="ph-bold ph-map-trifold"></i></span>
+                <span><i class="ph-bold ph-game-controller"></i></span>
+                <span><i class="ph-bold ph-book-open"></i></span>
+                <span><i class="ph-bold ph-envelope-simple"></i></span>
+                <span><i class="ph-bold ph-calendar-blank"></i></span>
+              </div>
+            </div>
+            <div class="stage-layer" id="stage-float" aria-hidden="true"></div>
+          </article>
+
+          <article class="tile tile-feed reveal" style="--i:1">
+            <h3>Feed them treats</h3>
+            <p>Drag a snack onto a pet. Skip meals and they get hungry, then grumpy.</p>
+            <div class="mini-tray" aria-label="Treats to drag onto the pet">
+              <button class="treat" type="button" data-treat="cupcake" aria-label="Feed a cupcake"><img src="assets/treats/cupcake.png" alt=""></button>
+              <button class="treat" type="button" data-treat="watermelon" aria-label="Feed watermelon"><img src="assets/treats/watermelon.png" alt=""></button>
+              <button class="treat" type="button" data-treat="donut" aria-label="Feed a donut"><img src="assets/treats/donut.png" alt=""></button>
+            </div>
+            <div class="stage-layer" id="stage-feed" aria-hidden="true"></div>
+          </article>
+
+          <article class="tile tile-nudge reveal" style="--i:2">
+            <h3>Reminders with paws</h3>
+            <p>Set one and a pet walks out to tell you when it's time.</p>
+            <div class="nudge-note glass" data-stage>Time to drink some water!</div>
+            <div class="stage-layer" id="stage-nudge" aria-hidden="true"></div>
+          </article>
+
+          <article class="tile tile-squad reveal">
+            <h3>A squad with opinions</h3>
+            <p>Bring three out together. They play, chat and squabble.</p>
+            <div class="stage-layer" id="stage-squad" aria-hidden="true"></div>
+          </article>
+
+          <article class="tile tile-fling reveal" style="--i:1">
+            <h3>Pick up, drag, fling</h3>
+            <p>Grab a pet and toss it across the screen. Drop one from up high and it opens a parachute.</p>
+            <p class="fling-hint">Go on, throw one.</p>
+            <div class="stage-layer" id="stage-fling" aria-hidden="true"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="live">
+      <div class="wrap reveal">
+        <h2 data-perch>Psst. Your squad is already here.</h2>
+        <p>The pets on this page are real Perchies. Drag one onto a heading, drop it from the top, or open the treats and feed it.</p>
+        <div class="live-actions">
+          <button class="btn btn-primary" type="button" data-open-treats><i class="ph-bold ph-cookie" aria-hidden="true"></i>Open treats</button>
+          <button class="btn btn-ghost" type="button" data-shuffle><i class="ph-bold ph-shuffle" aria-hidden="true"></i>New squad</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="faq">
+      <div class="wrap faq-grid">
+        <div class="section-head reveal">
+          <h2 data-perch>Questions</h2>
+          <p>Still curious? <a href="support.html">Get in touch</a>.</p>
+        </div>
+        <div class="faq reveal" style="--i:1">
+          <details class="glass" data-perch>
+            <summary>Is Perchies free?<i class="ph-bold ph-plus" aria-hidden="true"></i></summary>
+            <p>Yes, Perchies is free to download on Google Play.</p>
+          </details>
+          <details class="glass">
+            <summary>Will the pets get in my way?<i class="ph-bold ph-plus" aria-hidden="true"></i></summary>
+            <p>They stay along the edges of your screen, and taps that miss a pet go straight through to your app. Call them home with one tap whenever you want them gone.</p>
+          </details>
+          <details class="glass">
+            <summary>What permissions does it need?<i class="ph-bold ph-plus" aria-hidden="true"></i></summary>
+            <p>Display over other apps, so the pets can walk on your screen in float mode. Android also shows a small notification while your pets are out roaming.</p>
+          </details>
+          <details class="glass">
+            <summary>Does it collect my data?<i class="ph-bold ph-plus" aria-hidden="true"></i></summary>
+            <p>No. There is no account and no tracking. Your squad, treats and reminders stay on your phone. Read the <a href="privacy.html">privacy policy</a>.</p>
+          </details>
+          <details class="glass">
+            <summary>Is it on iPhone or my computer?<i class="ph-bold ph-plus" aria-hidden="true"></i></summary>
+            <p>Perchies is on Android today. A web and desktop version is on the way, with room for an even bigger squad.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="final">
+      <div class="wrap">
+        <div class="final-card glass reveal" data-perch>
+          <div>
+            <h2>Let them out.</h2>
+            <p>Pick your first pet, give it a treat and send it walking across your screen.</p>
+          </div>
+          <a class="play-badge play-link" href="https://play.google.com/store/apps/details?id=com.perchies.pets">
+            <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" width="223" height="86">
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-row">
+      <a class="logo" href="./"><img src="assets/icon-192.png" alt="" width="34" height="34">Perchies</a>
+      <nav aria-label="Footer">
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="support.html">Support</a>
+      </nav>
+      <p>&copy; 2026 Perchies</p>
+    </div>
+  </footer>
+
+  <script type="module" src="assets/js/site.js"></script>
+</body>
+</html>
