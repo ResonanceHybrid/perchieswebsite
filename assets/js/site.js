@@ -21,6 +21,27 @@ const store = {
   },
 };
 
+const themeBtn = $('[data-theme-toggle]');
+const themeMeta = $('meta[name="theme-color"]');
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeMeta?.setAttribute('content', theme === 'dark' ? '#150e28' : '#f4ecff');
+  if (!themeBtn) return;
+  themeBtn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+  themeBtn.innerHTML = `<i class="ph-bold ph-${theme === 'dark' ? 'sun' : 'moon'}" aria-hidden="true"></i>`;
+}
+
+applyTheme(document.documentElement.dataset.theme ?? 'light');
+themeBtn?.addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  store.set('theme', next);
+  applyTheme(next);
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+  if (store.get('theme', null) == null) applyTheme(e.matches ? 'dark' : 'light');
+});
+
 const FAMILY_NAME = {
   bunny: 'Bunny', cat: 'Cat', penguin: 'Penguin', mushroom: 'Mushroom', monster: 'Monster',
   panda: 'Panda', bear: 'Bear', redpanda: 'Red panda', koala: 'Koala', chick: 'Chick',
