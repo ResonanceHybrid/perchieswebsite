@@ -51,6 +51,7 @@
         <nav class="nav-links" aria-label="Main">
           <a href="#characters">Characters</a>
           <a href="#how">How it works</a>
+          <a href="#modes">Modes</a>
           <a href="#faq">FAQ</a>
         </nav>
         <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode"><i class="ph-bold ph-moon" aria-hidden="true"></i></button>
@@ -186,6 +187,36 @@
         <div class="live-actions">
           <button class="btn btn-primary" type="button" data-open-treats><i class="ph-bold ph-cookie" aria-hidden="true"></i>Open treats</button>
           <button class="btn btn-ghost" type="button" data-shuffle><i class="ph-bold ph-shuffle" aria-hidden="true"></i>New squad</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="modes">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <h2 data-perch>Modes</h2>
+          <p>The same switches as the app. Flip one and the pets on this page change right away.</p>
+        </div>
+        <div class="modes">
+          <article class="mode-card mode-vibe glass reveal" data-perch>
+            <h3>Vibe</h3>
+            <p>How busy and rowdy your squad is.</p>
+            <div class="vibes" id="vibes" role="group" aria-label="Vibe"></div>
+            <p class="vibe-blurb" id="vibe-blurb" aria-live="polite"></p>
+          </article>
+          <article class="mode-card mode-page glass reveal" style="--i:1" data-perch>
+            <h3>On this page</h3>
+            <p>What the squad gets up to while you scroll.</p>
+            <div id="page-modes"></div>
+          </article>
+          <article class="mode-card mode-remind glass reveal" style="--i:2" data-perch>
+            <h3>Reminders</h3>
+            <p>While your squad is out, one of them brings these to you. Tap the note when you're done.</p>
+            <div id="reminders"></div>
+            <div class="remind-actions">
+              <button class="btn btn-ghost" type="button" id="remind-now"><i class="ph-bold ph-bell-ringing" aria-hidden="true"></i>Try one now</button>
+            </div>
+          </article>
         </div>
       </div>
     </section>

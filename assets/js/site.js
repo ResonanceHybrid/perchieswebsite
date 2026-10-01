@@ -1,4 +1,4 @@
-import { Roster, World, Puppet, feedAt, anyPet, traitOf, TRAIT_LABEL, MOVE_LABEL } from './pets.js';
+import { Roster, World, Puppet, feedAt, anyPet, traitOf, TRAIT_LABEL, MOVE_LABEL, modes, VIBES } from './pets.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -20,6 +20,8 @@ const store = {
     } catch {}
   },
 };
+
+Object.assign(modes, store.get('modes', {}));
 
 const themeBtn = $('[data-theme-toggle]');
 const themeMeta = $('meta[name="theme-color"]');
@@ -347,3 +349,130 @@ stage('stage-fling', { scale: 0.5, top: 60, floorPad: 8 }, () => [anyOf('bunny')
 addEventListener('resize', () => {
   page.top = nav ? nav.getBoundingClientRect().bottom : 0;
 });
+
+/* Modes */
+
+const VIBE_ICON = { calm: 'leaf', playful: 'confetti', chaos: 'fire' };
+const PAGE_MODES = [
+  ['social', 'users-three', 'Squad life', 'Parades, tag, nap piles and the odd brawl.'],
+  ['moonwalk', 'sparkle', 'Moonwalk', 'Now and then one glides backwards, smooth as you like.'],
+  ['climb', 'mountains', 'Wall climbing', 'They scale the edges of your screen and leap off.'],
+];
+const DEFAULT_REMINDERS = [
+  { text: 'Drink some water', minutes: 60, on: true },
+  { text: 'Stand up and stretch', minutes: 45, on: true },
+  { text: 'Sit up straight', minutes: 30, on: false },
+  { text: 'Rest your eyes', minutes: 20, on: false },
+];
+
+const saveModes = () => store.set('modes', modes);
+
+function switchButton(label, on, onChange) {
+  const b = document.createElement('button');
+  b.className = 'switch';
+  b.type = 'button';
+  b.setAttribute('role', 'switch');
+  b.setAttribute('aria-label', label);
+  b.setAttribute('aria-checked', String(on));
+  b.addEventListener('click', () => {
+    const next = b.getAttribute('aria-checked') !== 'true';
+    b.setAttribute('aria-checked', String(next));
+    onChange(next);
+  });
+  return b;
+}
+
+function toggleRow(icon, title, blurb, control) {
+  const row = document.createElement('div');
+  row.className = 'toggle-row';
+  row.innerHTML = `<i class="ph-bold ph-${icon}" aria-hidden="true"></i><div><strong></strong><span></span></div>`;
+  $('strong', row).textContent = title;
+  $('span', row).textContent = blurb;
+  row.append(control);
+  return row;
+}
+
+const vibesEl = $('#vibes');
+if (vibesEl) {
+  const blurb = $('#vibe-blurb');
+  const paint = () => {
+    $$('.vibe', vibesEl).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.vibe === modes.vibe)));
+    blurb.textContent = VIBES[modes.vibe].blurb;
+  };
+  for (const [key, v] of Object.entries(VIBES)) {
+    const b = document.createElement('button');
+    b.className = 'vibe';
+    b.type = 'button';
+    b.dataset.vibe = key;
+    b.innerHTML = `<i class="ph-bold ph-${VIBE_ICON[key]}" aria-hidden="true"></i>${v.label}`;
+    b.addEventListener('click', () => {
+      modes.vibe = key;
+      saveModes();
+      paint();
+      const p = anyPet();
+      p?.say({ calm: 'ahh, peace', playful: 'yay!', chaos: 'let\u2019s go!' }[key], 1.6);
+    });
+    vibesEl.append(b);
+  }
+  paint();
+
+  const pageModes = $('#page-modes');
+  for (const [key, icon, title, text] of PAGE_MODES) {
+    pageModes.append(toggleRow(icon, title, text, switchButton(title, modes[key] !== false, (on) => {
+      modes[key] = on;
+      saveModes();
+    })));
+  }
+  const scatterBtn = document.createElement('button');
+  scatterBtn.className = 'btn btn-ghost btn-small';
+  scatterBtn.type = 'button';
+  scatterBtn.textContent = 'Scatter';
+  scatterBtn.addEventListener('click', () => {
+    if (!out) return letOut();
+    page.scatter();
+  });
+  pageModes.append(toggleRow('wind', 'Scatter', 'Send everyone flying.', scatterBtn));
+}
+
+let reminders = store.get('reminders', null);
+if (!Array.isArray(reminders) || reminders.length !== DEFAULT_REMINDERS.length) reminders = DEFAULT_REMINDERS.map((r) => ({ ...r }));
+const lastShown = reminders.map(() => Date.now());
+
+function deliver(text) {
+  if (!out) {
+    letOut();
+    setTimeout(() => deliver(text), 3200);
+    return;
+  }
+  if (!page.herald(text)) setTimeout(() => page.herald(text), 1500);
+}
+
+const remindersEl = $('#reminders');
+if (remindersEl) {
+  reminders.forEach((r, i) => {
+    remindersEl.append(toggleRow(
+      ['drop', 'person-simple', 'armchair', 'eye'][i] ?? 'bell',
+      r.text,
+      `Every ${r.minutes} min`,
+      switchButton(r.text, r.on, (on) => {
+        reminders[i].on = on;
+        lastShown[i] = Date.now();
+        store.set('reminders', reminders);
+      }),
+    ));
+  });
+  $('#remind-now').addEventListener('click', () => {
+    const on = reminders.filter((r) => r.on);
+    deliver(pick(on.length ? on : reminders).text);
+  });
+}
+
+setInterval(() => {
+  const now = Date.now();
+  reminders.forEach((r, i) => {
+    if (r.on && now - lastShown[i] >= r.minutes * 60000) {
+      lastShown[i] = now;
+      deliver(r.text);
+    }
+  });
+}, 10000);

@@ -15,6 +15,28 @@ export const MOVE_LABEL = {
 };
 export const traitOf = (c) => TRAITS[c.family] ?? 'wanderer';
 
+export const modes = { vibe: 'playful', social: true, moonwalk: true, climb: true };
+export const VIBES = {
+  calm: {
+    label: 'Calm', blurb: 'Quiet company. They wander, nap and never fight.',
+    eventGap: [20, 40], brawl: 0, grudge: 0, greetGap: 40, chatty: 0.4,
+    idle: 1.6, walk: 0.8, roll: 0.5, hop: 0.7, boop: 0, speed: 0.85,
+  },
+  playful: {
+    label: 'Playful', blurb: 'Parades, games of tag and the odd scuffle.',
+    eventGap: [8, 20], brawl: 1, grudge: 0.7, greetGap: 18, chatty: 1,
+    idle: 1, walk: 1, roll: 1, hop: 1, boop: 1, speed: 1,
+  },
+  chaos: {
+    label: 'Chaos', blurb: 'Brawls, chases and grudges. Never a dull second.',
+    eventGap: [3, 8], brawl: 3, grudge: 1, greetGap: 8, chatty: 1.6,
+    idle: 0.5, walk: 1.2, roll: 2, hop: 1.5, boop: 3, speed: 1.2,
+  },
+};
+const vibe = () => VIBES[modes.vibe] ?? VIBES.playful;
+const FX = { pop: { w: 96, h: 96, n: 12 }, poof: { w: 115, h: 112, n: 12 } };
+const GREETS = [['hi!', 'hello!'], ['hey you', 'hehe'], ['nice hat', 'thanks!'], ['wanna play?', 'yes!'], ['move over', 'no, you'], ['snack?', 'yum']];
+
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
@@ -180,6 +202,11 @@ export class World {
     this.weights = opts.weights ?? {};
     this.lines = opts.lines ?? CHATTER;
     this.pets = [];
+    this.event = null;
+    this.eventIn = rand(4, 8);
+    this.cool = new Map();
+    this.grudges = new Map();
+    this.clock = 0;
     this.active = this.fixed;
     this.refreshPerches();
     if (!this.fixed) {
@@ -238,7 +265,168 @@ export class World {
 
   tick(dt) {
     this.measure();
+    this.clock += dt;
     for (const p of [...this.pets]) p.update(dt);
+    if (!reduced.matches) this.life(dt);
+  }
+
+  ready(key) {
+    return (this.cool.get(key) ?? 0) <= this.clock;
+  }
+
+  rest(key, seconds) {
+    this.cool.set(key, this.clock + seconds);
+  }
+
+  fx(kind, x, y, scale = 0.35, tint = '#ffffff') {
+    if (reduced.matches) return;
+    const f = FX[kind];
+    const el = document.createElement('div');
+    el.className = 'pp-fx';
+    el.style.cssText = `width:${f.w}px;height:${f.h}px;--sheet:url("${new URL(`../fx/${kind}.webp`, new URL(this.roster.base, location.href)).href}");--strip:${f.w * f.n}px;--h:${f.h}px;--tint:${tint};transform:translate3d(${(x - f.w / 2).toFixed(1)}px,${(y - f.h / 2).toFixed(1)}px,0) scale(${(scale * this.scale * 2).toFixed(3)})`;
+    el.addEventListener('animationend', () => el.remove());
+    this.layer.append(el);
+  }
+
+  free(floorOnly = true) {
+    return shuffle(this.pets.filter((p) => !p.directed && p.grounded && (!floorOnly || p.surface.kind === 'floor')));
+  }
+
+  life(dt) {
+    const live = this.pets.filter((p) => !p.leaving);
+    this.bump(live);
+    if (!modes.social || live.length < 2) {
+      if (this.event && !(this.event instanceof Herald)) this.endEvent();
+      if (this.event) this.direct(dt);
+      return;
+    }
+    this.greet(live);
+    this.direct(dt);
+  }
+
+  bump(live) {
+    for (const a of live) {
+      if (a.mode !== 'air' || Math.hypot(a.vx, a.vy) < 650) continue;
+      for (const b of live) {
+        if (a === b || !b.grounded || !this.ready(b)) continue;
+        if (!overlaps(a.body(), b.body(), 4)) continue;
+        const dir = a.vx === 0 ? (b.x < a.x ? -1 : 1) : Math.sign(a.vx);
+        b.knock(a.vx * 0.5 + dir * 160, -360 - Math.random() * 260);
+        b.say(pick(['oof', 'hey!', 'ouch']), 1.2);
+        a.vx *= 0.6;
+        a.vy *= 0.6;
+        this.fx('pop', (a.x + b.x) / 2, (a.y - a.height / 2 + b.y - b.height / 2) / 2, 0.35);
+        this.rest(b, 0.8);
+        if (modes.social && Math.random() < vibe().grudge) this.grudges.set(b, { by: a, until: this.clock + 12 });
+      }
+    }
+  }
+
+  greet(live) {
+    for (let i = 0; i < live.length; i++) {
+      for (let j = i + 1; j < live.length; j++) {
+        const a = live[i];
+        const b = live[j];
+        if (a.directed || b.directed || !a.grounded || !b.grounded || !sameSurface(a, b)) continue;
+        if (Math.abs(a.x - b.x) > (a.half + b.half) * 1.15) continue;
+        const key = `${a.id}-${b.id}`;
+        if (!this.ready(key)) continue;
+        this.rest(key, vibe().greetGap * (1 + Math.random()));
+        a.face(b.x);
+        b.face(a.x);
+        const [x, y] = pick(GREETS);
+        a.say(x);
+        setTimeout(() => b.say(y), 700);
+        a.idleFor(1.4 + Math.random());
+        if (Math.random() < 0.4) b.hopInPlace(260);
+        else b.idleFor(1.6 + Math.random());
+      }
+    }
+  }
+
+  direct(dt) {
+    const e = this.event;
+    if (e) {
+      e.t += dt;
+      if (e.broken() || !e.tick(dt)) this.endEvent();
+      return;
+    }
+    if (this.settle()) return;
+    this.eventIn -= dt;
+    if (this.eventIn > 0) return;
+    this.eventIn = 3;
+    const v = vibe();
+    const hour = new Date().getHours();
+    const brawlers = this.pets.some((p) => p.trait === 'brawler');
+    const options = [
+      ['parade', 3, Parade],
+      ['tag', 3, Tag],
+      ['brawl', Math.round((brawlers ? 5 : 2) * v.brawl), Brawl],
+      ['leapfrog', 2, Leapfrog],
+      ['nap', hour >= 22 || hour < 6 ? 5 : 1, NapPile],
+      ['party', 2, Party],
+    ].filter((o) => o[0] !== this.lastEvent && o[1] > 0);
+    let roll = Math.random() * options.reduce((sum, o) => sum + o[1], 0);
+    for (const [name, weight, Kind] of shuffle(options)) {
+      if ((roll -= weight) > 0) continue;
+      const ev = Kind.make(this);
+      if (!ev) return;
+      this.lastEvent = name;
+      this.begin(ev);
+      return;
+    }
+  }
+
+  begin(ev) {
+    this.event = ev;
+    for (const p of ev.cast) p.directed = true;
+    ev.start();
+  }
+
+  endEvent() {
+    const e = this.event;
+    if (!e) return;
+    this.event = null;
+    for (const p of e.cast) {
+      p.directed = false;
+      p.walkMul = 1;
+    }
+    e.end?.();
+    const [lo, hi] = vibe().eventGap;
+    this.eventIn = rand(lo, hi);
+  }
+
+  settle() {
+    for (const [victim, g] of this.grudges) {
+      if (g.until < this.clock || !this.pets.includes(victim) || !this.pets.includes(g.by)) {
+        this.grudges.delete(victim);
+        continue;
+      }
+      const culprit = g.by;
+      if (![victim, culprit].every((p) => p.grounded && !p.directed && !p.leaving) || !sameSurface(victim, culprit)) continue;
+      this.grudges.delete(victim);
+      victim.say('you again!', 1.5);
+      this.begin(new Brawl(this, [victim, culprit]));
+      return true;
+    }
+    return false;
+  }
+
+  herald(text) {
+    if (this.event instanceof Herald) this.endEvent();
+    const p = this.free(false)[0] ?? this.pets.find((q) => q.grounded && !q.leaving);
+    if (!p) return false;
+    if (this.event) this.endEvent();
+    this.begin(new Herald(this, [p], text));
+    return true;
+  }
+
+  scatter() {
+    for (const p of this.pets) {
+      if (p.leaving || p.mode === 'held') continue;
+      p.knock(rand(-900, 900), rand(-1500, -900));
+      p.say(pick(['wheee', 'whoa!', 'aaah']), 1.2);
+    }
   }
 
   async add(c, how = 'drop', at) {
@@ -283,6 +471,313 @@ export class World {
   }
 }
 
+function shuffle(list) {
+  return list.map((v) => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map((p) => p[1]);
+}
+
+function overlaps(a, b, inset = 0) {
+  return a.l < b.r - inset && a.r > b.l + inset && a.t < b.b - inset && a.b > b.t + inset;
+}
+
+function sameSurface(a, b) {
+  return a.surface.kind === b.surface.kind && (a.surface.kind === 'floor' || a.surface.el === b.surface.el);
+}
+
+class Event {
+  constructor(world, cast) {
+    this.w = world;
+    this.cast = cast;
+    this.t = 0;
+  }
+
+  broken() {
+    return this.cast.some((p) => p.mode === 'held' || p.leaving || !this.w.pets.includes(p));
+  }
+}
+
+class Parade extends Event {
+  static make(w) {
+    const f = w.free();
+    return f.length < 2 ? null : new Parade(w, f);
+  }
+
+  get leader() { return this.cast[0]; }
+
+  march() {
+    const l = this.leader;
+    l.walkTo(l.x < this.w.w / 2 ? this.w.w - l.half * 2 : l.half * 2, 0.9);
+  }
+
+  start() {
+    this.legs = 0;
+    this.gap = Math.max(...this.cast.map((p) => p.half * 2)) * 0.9;
+    this.leader.say(pick(['parade!', 'follow me', 'march!']), 3);
+    this.march();
+  }
+
+  tick() {
+    const l = this.leader;
+    if (l.mode === 'idle' && l.t > 0.6) {
+      if (++this.legs >= 2) return false;
+      this.march();
+      l.say('about turn!', 1.2);
+    }
+    const behind = l.facing > 0 ? -1 : 1;
+    this.cast.slice(1).forEach((p, i) => {
+      const x = l.x + behind * this.gap * (i + 1);
+      if (Math.abs(p.x - x) > 6) p.walkTo(x, 1.35);
+      else if (p.mode === 'idle') p.facing = l.facing;
+    });
+    return this.t < 22;
+  }
+}
+
+class Tag extends Event {
+  static make(w) {
+    const f = w.free(false);
+    for (const a of f) {
+      for (const b of f) {
+        if (a !== b && sameSurface(a, b) && a.span() > a.half * 10) return new Tag(w, [a, b]);
+      }
+    }
+    return null;
+  }
+
+  start() {
+    this.caughtAt = -1;
+    this.cast[0].say(pick(['tag!', "you're it!", 'gotcha soon']), 2);
+    this.cast[1].say(pick(['eek!', 'nope!', 'run!']), 2);
+  }
+
+  tick() {
+    const [chaser, runner] = this.cast;
+    if (this.caughtAt >= 0) return this.t - this.caughtAt < 1.6;
+    if (!runner.grounded || !chaser.grounded) return this.t < 11;
+    const b = runner.bounds();
+    if (!b) return false;
+    const away = runner.x >= chaser.x ? 1 : -1;
+    const edge = away > 0 ? b.max : b.min;
+    const gap = Math.abs(runner.x - chaser.x);
+    if (Math.abs(runner.x - edge) < 12 && gap < 110) {
+      runner.leapTo(clamp(chaser.x - away * 110, b.min, b.max), chaser.height + 30);
+      runner.say('hup!', 1);
+    } else {
+      runner.walkTo(edge, 1.55);
+    }
+    chaser.walkTo(runner.x, 1.85);
+    if (gap < (chaser.half + runner.half) * 0.8) {
+      chaser.boop();
+      chaser.say("you're it!", 1.5);
+      runner.knock(away * 320, -420);
+      runner.say('oof', 1.5);
+      this.caughtAt = this.t;
+    }
+    if (this.t > 11) {
+      chaser.say('phew', 1.5);
+      return false;
+    }
+    return true;
+  }
+}
+
+class Brawl extends Event {
+  static make(w) {
+    const f = w.free(false).sort((a, b) => (b.trait === 'brawler') - (a.trait === 'brawler'));
+    for (const a of f) for (const b of f) if (a !== b && sameSurface(a, b)) return new Brawl(w, [a, b]);
+    return null;
+  }
+
+  start() {
+    this.clashAt = -1;
+    this.doneAt = -1;
+    this.beat = 0;
+    this.cast[0].say(pick(['hey!', 'grr', 'come here']), 2);
+    this.cast[1].say(pick(['oh yeah?', 'bring it', 'hmph']), 2);
+  }
+
+  tick(dt) {
+    if (this.doneAt >= 0) return this.aftermath();
+    const [a, b] = this.cast;
+    const mid = (a.x + b.x) / 2;
+    if (this.clashAt < 0) {
+      if (Math.abs(a.x - b.x) > a.half + b.half) {
+        a.walkTo(mid, 1.3);
+        b.walkTo(mid, 1.3);
+      } else if (a.grounded && b.grounded) {
+        this.clashAt = this.t;
+        this.clashFor = 1.4 + Math.random() * 1.2;
+      }
+      return this.t < 10;
+    }
+    this.beat -= dt;
+    if (this.beat <= 0) {
+      this.beat = 0.3;
+      a.face(b.x);
+      b.face(a.x);
+      for (const p of this.cast) {
+        if (!p.grounded) continue;
+        if (Math.random() < 0.5) p.boop();
+        else p.hopInPlace(160 + Math.random() * 120);
+        if (Math.random() < 0.35) p.say(pick(['pow!', 'grr', 'take that', 'hey!']), 0.6);
+      }
+      this.w.fx('pop', mid + rand(-20, 20), a.y - a.height * rand(0.3, 0.7), 0.4);
+    }
+    if (this.t - this.clashAt < this.clashFor) return true;
+    const odds = (a.trait === 'brawler' ? 0.65 : 0.5) - (b.trait === 'brawler' ? 0.15 : 0);
+    const win = Math.random() < odds ? a : b;
+    const lose = win === a ? b : a;
+    const dir = lose.x >= win.x ? 1 : -1;
+    lose.knock(dir * (480 + Math.random() * 320), -520);
+    lose.say(pick(['ow!', 'no fair', 'oof']), 1.6);
+    win.say(pick(['ha!', 'too easy', 'champion']), 2);
+    win.hopInPlace(320);
+    this.w.fx('poof', lose.x, lose.y - lose.height / 2, 0.4, '#ffd27a');
+    this.win = win;
+    this.doneAt = this.t;
+    const ally = this.w.free(false).find((p) => p.c.family === lose.c.family && sameSurface(p, win));
+    if (ally && Math.random() < 0.45) {
+      this.avenger = ally;
+      ally.directed = true;
+      this.cast.push(ally);
+      ally.say(pick(['you!', 'leave them alone', 'my turn']), 2);
+    }
+    return true;
+  }
+
+  aftermath() {
+    const av = this.avenger;
+    const w = this.win;
+    if (!av) return this.t - this.doneAt < 2;
+    if (!av.grounded) return this.t - this.doneAt < 6;
+    if (Math.abs(av.x - w.x) > av.half + w.half) {
+      if (w.grounded) av.walkTo(w.x, 1.9);
+      return this.t - this.doneAt < 7;
+    }
+    av.boop();
+    av.say('take that', 1.2);
+    w.knock((w.x >= av.x ? 1 : -1) * 520, -480);
+    w.say('ow!', 1.5);
+    this.w.fx('pop', (av.x + w.x) / 2, w.y - w.height / 2, 0.4);
+    this.avenger = null;
+    return true;
+  }
+}
+
+class Leapfrog extends Event {
+  static make(w) {
+    const f = w.free(false).sort((a, b) => (b.trait === 'hopper') - (a.trait === 'hopper'));
+    for (const a of f) for (const b of f) if (a !== b && sameSurface(a, b) && a.c.anims.jump) return new Leapfrog(w, [a, b]);
+    return null;
+  }
+
+  start() {
+    this.jumped = false;
+    this.cast[1].idleFor(99);
+    this.cast[1].say('uh oh', 2);
+  }
+
+  tick() {
+    const [frog, post] = this.cast;
+    if (this.jumped) return frog.mode === 'hop' || frog.t < 0.3 ? this.t < 8 : false;
+    const dir = post.x >= frog.x ? 1 : -1;
+    if (Math.abs(post.x - frog.x) > post.half + frog.half + 40) {
+      frog.walkTo(post.x - dir * (post.half + frog.half + 30), 1.4);
+      return this.t < 10;
+    }
+    if (!frog.grounded) return true;
+    const b = frog.bounds();
+    if (!b) return false;
+    frog.leapTo(clamp(post.x + dir * (post.half + frog.half + 30), b.min, b.max), post.height + 40);
+    frog.say(pick(['hup!', 'leapfrog!', 'wheee']), 1.4);
+    this.jumped = true;
+    return true;
+  }
+}
+
+class NapPile extends Event {
+  static make(w) {
+    const f = w.free();
+    return f.length < 2 ? null : new NapPile(w, f);
+  }
+
+  start() {
+    this.spot = this.cast[0].x;
+    this.sleptAt = -1;
+    this.cast[0].say('*yawn*', 2);
+  }
+
+  tick() {
+    if (this.sleptAt >= 0) return this.t - this.sleptAt < 9;
+    let all = true;
+    this.cast.forEach((p, i) => {
+      const x = this.spot + (i % 2 ? -1 : 1) * Math.ceil(i / 2) * p.half * 1.3;
+      if (Math.abs(p.x - x) > 6) {
+        all = false;
+        if (p.grounded) p.walkTo(x, 0.8);
+      }
+    });
+    if (all || this.t > 9) {
+      this.sleptAt = this.t;
+      for (const p of this.cast) {
+        p.face(this.spot);
+        p.idleFor(99);
+      }
+      this.cast[0].say('zzz', 9);
+    }
+    return true;
+  }
+}
+
+class Party extends Event {
+  static make(w) {
+    const f = w.free(false);
+    return f.length < 2 ? null : new Party(w, f);
+  }
+
+  start() {
+    this.beat = 0;
+    this.until = 6 + Math.random();
+    this.cast[0].say(pick(['party!', 'dance time', 'music!']), 2.5);
+  }
+
+  tick(dt) {
+    this.beat -= dt;
+    if (this.beat <= 0) {
+      this.beat = 0.9 + Math.random() * 0.6;
+      for (const p of this.cast) if (p.grounded && Math.random() < 0.7) p.dance();
+    }
+    return this.t < this.until;
+  }
+}
+
+class Herald extends Event {
+  constructor(world, cast, text) {
+    super(world, cast);
+    this.text = text;
+  }
+
+  start() {
+    const p = this.cast[0];
+    this.beat = 0;
+    p.note(this.text, () => this.w.event === this && this.w.endEvent());
+    p.walkTo(this.w.w / 2, 1.4);
+  }
+
+  tick(dt) {
+    const p = this.cast[0];
+    this.beat -= dt;
+    if (p.mode === 'idle' && this.beat <= 0) {
+      this.beat = 1.6;
+      p.hopInPlace(300);
+    }
+    if (this.t > 30) {
+      p.hush();
+      return false;
+    }
+    return !!p.bubble;
+  }
+}
+
 export function feedAt(clientX, clientY) {
   for (const w of worlds) {
     if (!w.active) continue;
@@ -300,8 +795,13 @@ export function anyPet() {
   return all.length ? pick(all) : null;
 }
 
+let nextId = 1;
+
 class Pet {
   constructor(world, c) {
+    this.id = nextId++;
+    this.directed = false;
+    this.walkMul = 1;
     this.w = world;
     this.c = c;
     this.sprite = new Sprite(world.roster, c, world.scale);
@@ -340,7 +840,92 @@ class Pet {
   get s() { return this.w.scale; }
   get half() { return (this.c.bw * this.s) / 2; }
   get height() { return this.c.bh * this.s; }
-  get speed() { return 80 * this.s * (this.trait === 'napper' ? 0.8 : 1); }
+  get speed() { return 80 * this.s * (this.trait === 'napper' ? 0.8 : 1) * vibe().speed; }
+  get grounded() { return !this.leaving && ['idle', 'walk', 'roll', 'stun', 'boop'].includes(this.mode); }
+
+  body() {
+    return { l: this.x - this.half, r: this.x + this.half, t: this.y - this.height, b: this.y };
+  }
+
+  span() {
+    const b = this.bounds();
+    return b ? b.max - b.min : 0;
+  }
+
+  face(x) {
+    if (x !== this.x) this.facing = Math.sign(x - this.x);
+  }
+
+  idleFor(seconds) {
+    if (!this.grounded) return;
+    this.mode = 'idle';
+    this.goal = null;
+    this.timer = seconds;
+  }
+
+  walkTo(x, mul = 1) {
+    if (!this.grounded || this.mode === 'stun') return;
+    if (this.mode !== 'walk') this.t = 0;
+    this.mode = 'walk';
+    this.goal = null;
+    this.moon = false;
+    this.tx = x;
+    this.walkMul = mul;
+  }
+
+  hopInPlace(v) {
+    if (!this.grounded) return;
+    this.angle = 0;
+    this.mode = 'air';
+    this.t = 0;
+    this.vx = 0;
+    this.vy = -v * this.s * 2;
+    this.flung = false;
+  }
+
+  knock(vx, vy) {
+    if (this.mode === 'held' || this.leaving) return;
+    this.angle = 0;
+    this.chute = false;
+    this.mode = 'air';
+    this.t = 0;
+    this.vx = vx * this.s * 2;
+    this.vy = vy * this.s * 2;
+    this.flung = true;
+  }
+
+  boop() {
+    if (!this.grounded) return;
+    this.t = 0;
+    if (this.c.anims.hit) {
+      this.mode = 'boop';
+      this.timer = 0.6;
+    } else {
+      this.hopInPlace(200);
+    }
+  }
+
+  dance() {
+    this.facing = -this.facing;
+    this.hopInPlace(180 + Math.random() * 120);
+  }
+
+  leapTo(tx, apex) {
+    if (!this.grounded) return;
+    const L = this.surface.kind === 'ledge' ? this.w.ledgeOf(this.surface.el) : null;
+    this.hopTo(L, tx);
+    this.hopArc = apex;
+  }
+
+  note(text, onDone) {
+    this.say(text, 30, true);
+    this.bubble.classList.add('note');
+    this.bubble.onclick = () => {
+      this.hush();
+      this.say(pick(['nice!', 'good job', 'yay']), 1.4);
+      onDone?.();
+    };
+  }
 
   headAt(f = 1) {
     const h = this.height * f;
@@ -376,19 +961,25 @@ class Pet {
     if (this.bubble) {
       const [hx, hy] = this.headAt();
       this.bubble.style.transform = `translate3d(${hx.toFixed(1)}px,${(hy - 8).toFixed(1)}px,0) translate(-50%,-100%)`;
-      if (this.t > this.bubbleUntil) this.hush();
+      if (clock > this.bubbleUntil) this.hush();
     }
   }
 
-  say(text, seconds = 1.8) {
+  say(text, seconds = 1.8, force = false) {
+    if (this.bubble?.classList.contains('note') && !force) return;
     this.saidAt = clock;
+    for (const p of this.w.pets) {
+      if (p !== this && p.bubble && !p.bubble.classList.contains('note')) p.hush();
+    }
     if (!this.bubble) {
       this.bubble = document.createElement('div');
       this.bubble.className = 'pp-bubble';
       this.w.layer.append(this.bubble);
     }
     this.bubble.textContent = text;
-    this.bubbleUntil = this.t + seconds;
+    this.bubble.classList.remove('note');
+    this.bubble.onclick = null;
+    this.bubbleUntil = clock + seconds;
   }
 
   hush() {
@@ -427,14 +1018,14 @@ class Pet {
       case 'walk': case 'leave': {
         const target = this.mode === 'leave' ? this.exitX : this.tx;
         const dx = target - this.x;
-        const step = this.speed * (this.mode === 'leave' ? 2.4 : 1) * dt;
+        const step = this.speed * (this.mode === 'leave' ? 2.4 : this.walkMul * (this.moon ? 0.8 : 1)) * dt;
         if (this.mode === 'leave' && this.t - this.leftAt > 1.4 && !this.fading) {
           this.fading = true;
           this.sprite.el.classList.add('gone');
           this.hush();
           setTimeout(() => this.destroy(), 450);
         }
-        this.facing = Math.sign(dx) || this.facing;
+        this.facing = (this.moon ? -Math.sign(dx) : Math.sign(dx)) || this.facing;
         if (Math.abs(dx) <= step) {
           this.x = target;
           if (this.mode === 'leave') return this.destroy();
@@ -460,7 +1051,10 @@ class Pet {
       }
       default:
         this.timer -= dt;
-        if (this.timer <= 0) this.think();
+        if (this.timer <= 0) {
+          if (!this.directed) this.think();
+          else if (this.mode !== 'idle') this.idleFor(0.5);
+        }
     }
     if (this.mode !== 'leave' && this.mode !== 'roll') this.x = clamp(this.x, b.min, Math.max(b.min, b.max));
     if (this.surface.kind === 'ledge') this.surface.off = this.x - b.L.x1;
@@ -469,6 +1063,8 @@ class Pet {
   rest(seconds = rand(1.2, 3.5)) {
     this.mode = 'idle';
     this.goal = null;
+    this.moon = false;
+    this.walkMul = 1;
     this.timer = seconds;
   }
 
@@ -487,6 +1083,14 @@ class Pet {
     if (this.trait === 'wanderer') W.walk *= 1.5;
     if (this.trait === 'brawler') { W.walk *= 1.4; W.boop = this.c.anims.hit ? 1.2 : 0; W.hopDown = onLedge ? 1.2 : 0; }
     for (const [k, v] of Object.entries(this.w.weights)) if (k in W) W[k] *= v;
+    const v = vibe();
+    W.idle *= v.idle;
+    W.walk *= v.walk;
+    W.roll *= v.roll;
+    W.hopUp *= v.hop;
+    W.boop *= v.boop;
+    W.say *= v.chatty;
+    if (!modes.climb) W.climb = 0;
 
     let r = Math.random() * Object.values(W).reduce((a, v) => a + v, 0);
     let act = 'idle';
@@ -501,6 +1105,8 @@ class Pet {
         if (Math.abs(tx - this.x) < 50) tx = clamp(this.x + (Math.random() < 0.5 ? -1 : 1) * rand(60, 200), b.min, b.max);
         this.tx = tx;
         this.mode = 'walk';
+        this.moon = modes.moonwalk && Math.random() < 0.1;
+        if (this.moon) this.say(pick(['smooth', 'watch this', 'hee hee']), 1.6);
         return;
       }
       case 'hopUp': return this.hopUp() || this.rest(1);
